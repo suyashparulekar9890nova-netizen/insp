@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar.js';
 import { DashboardView } from './components/DashboardView.js';
 import { AgentStudioView } from './components/AgentStudioView.js';
 import { TelephonyView } from './components/TelephonyView.js';
+import { OutboundCampaignView } from './components/OutboundCampaignView.js';
 import { ToolsIntegrationsView } from './components/ToolsIntegrationsView.js';
 import { CallLogsView } from './components/CallLogsView.js';
 import { HostingView } from './components/HostingView.js';
@@ -122,6 +123,7 @@ class App {
         onSimulateCall: (agent) => this.openCallSimulator(agent),
         onTriggerRing: (agent, options) => this.triggerIncomingCall(agent, options)
       }),
+      outbound: new OutboundCampaignView(),
       tools: new ToolsIntegrationsView(),
       call_logs: new CallLogsView(),
       hosting: new HostingView({

@@ -191,7 +191,8 @@ insp/
 ├── server/
 │   ├── tts_server.py       # High-performance Edge TTS HTTP streaming server
 │   ├── wasapi_loopback.py  # Multi-device Windows WASAPI loopback VAD & STT listener
-│   └── whatsapp_caller.js  # Core WebRTC Puppeteer gateway & Groq reasoning engine
+│   ├── whatsapp_caller.js  # Core inbound WebRTC Puppeteer gateway & Groq reasoning
+│   └── whatsapp_outbound.js# Autonomous outbound CSV dues & WhatsApp messaging engine
 ├── src/
 │   ├── components/         # Modular Studio UI views (Agent Studio, Telephony, Logs)
 │   │   ├── AgentArchitectModal.js
@@ -199,6 +200,7 @@ insp/
 │   │   ├── CallLogsView.js
 │   │   ├── DashboardView.js
 │   │   ├── LiveCallModal.js
+│   │   ├── OutboundCampaignView.js # Outbound CSV dues upload & WhatsApp campaign studio
 │   │   └── TelephonyView.js
 │   ├── data/               # Default agents and mock tenant workspace data
 │   ├── main.js             # Frontend SPA application bootstrap

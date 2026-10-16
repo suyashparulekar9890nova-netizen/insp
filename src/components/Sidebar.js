@@ -44,9 +44,17 @@ export class Sidebar {
         <button class="nav-link-btn ${this.currentView === 'telephony' ? 'active' : ''}" data-view="telephony">
           <div class="nav-item-left">
             <span>📞</span>
-            <span>Telephony & Campaigns</span>
+            <span>Telephony & Inbound</span>
           </div>
           <span class="nav-pill-badge">${phoneNumbers.length}</span>
+        </button>
+
+        <button class="nav-link-btn ${this.currentView === 'outbound' ? 'active' : ''}" data-view="outbound" style="background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1)); border: 1px solid rgba(16, 185, 129, 0.3);">
+          <div class="nav-item-left">
+            <span>📢</span>
+            <span style="font-weight: 600;">Outbound Dues & CSV</span>
+          </div>
+          <span class="nav-pill-badge" style="background: #10b981; color: white;">NEW</span>
         </button>
 
         <div class="nav-category-title" style="margin-top: 0.6rem;">Integrations & Intelligence</div>
