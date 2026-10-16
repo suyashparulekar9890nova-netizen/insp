@@ -200,7 +200,7 @@ async function getInspirusState(browser) {
       } catch (e) {
         return null;
       }
-    });
+    }).catch(() => null);
 
     return data;
   } catch (err) {
@@ -531,6 +531,13 @@ async function getBrowserAndPage() {
     return { browser, page };
   }
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Handled Background Warning]', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.warn('[Handled Background Exception]', err?.message || err);
+});
 
 async function run() {
   console.log('[1/4] Spawning Windows WASAPI Loopback listener...');
