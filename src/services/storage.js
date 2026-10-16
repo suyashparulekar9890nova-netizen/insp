@@ -7,6 +7,15 @@ import {
   initialCallLogs,
   voiceModelsCatalog
 } from '../data/initialData.js';
+import {
+  isSupabaseConfigured,
+  getAgentsFromSupabase,
+  saveAgentToSupabase,
+  getCallLogsFromSupabase,
+  saveCallLogToSupabase,
+  getTelephonyAgentFromSupabase,
+  setTelephonyAgentInSupabase
+} from './supabaseClient.js';
 
 const STORAGE_KEYS = {
   ACTIVE_WORKSPACE_ID: 'inspirus_active_workspace_id',
@@ -23,6 +32,45 @@ const STORAGE_KEYS = {
 class StorageService {
   constructor() {
     this.init();
+    if (isSupabaseConfigured()) {
+      this.syncFromSupabase().catch(() => {});
+    }
+  }
+
+  async syncFromSupabase() {
+    try {
+      console.log('⚡ [Supabase] Synchronizing cloud database state...');
+      const [remoteAgents, remoteLogs, remoteAssignedId] = await Promise.all([
+        getAgentsFromSupabase(),
+        getCallLogsFromSupabase(),
+        getTelephonyAgentFromSupabase()
+      ]);
+
+      if (remoteAgents && remoteAgents.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.AGENTS, JSON.stringify(remoteAgents));
+        window.dispatchEvent(new CustomEvent('storage-updated', { detail: { type: 'agents' } }));
+        console.log(`✅ [Supabase] Synced ${remoteAgents.length} agents from cloud database.`);
+      } else if (remoteAgents && remoteAgents.length === 0) {
+        // First sync to fresh DB: push existing initial agents to Supabase
+        const local = this.getAllAgents();
+        for (const ag of local.slice(0, 5)) {
+          saveAgentToSupabase(ag).catch(() => {});
+        }
+      }
+
+      if (remoteLogs && remoteLogs.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.CALL_LOGS, JSON.stringify(remoteLogs));
+        window.dispatchEvent(new CustomEvent('storage-updated', { detail: { type: 'call_logs' } }));
+        console.log(`✅ [Supabase] Synced ${remoteLogs.length} call logs from cloud database.`);
+      }
+
+      if (remoteAssignedId) {
+        localStorage.setItem(STORAGE_KEYS.WHATSAPP_ASSIGNED_AGENT_ID, remoteAssignedId);
+        window.dispatchEvent(new CustomEvent('storage-updated', { detail: { type: 'whatsapp_agent', agentId: remoteAssignedId } }));
+      }
+    } catch (err) {
+      console.warn('[Supabase Sync Warning]', err.message);
+    }
   }
 
   init() {
@@ -130,6 +178,7 @@ class StorageService {
     }
     localStorage.setItem(STORAGE_KEYS.AGENTS, JSON.stringify(all));
     window.dispatchEvent(new CustomEvent('storage-updated', { detail: { type: 'agents', agentId: agent.id } }));
+    saveAgentToSupabase(agent).catch(() => {});
     return agent;
   }
 
@@ -161,6 +210,7 @@ class StorageService {
   setWhatsAppAssignedAgent(agentId) {
     localStorage.setItem(STORAGE_KEYS.WHATSAPP_ASSIGNED_AGENT_ID, agentId);
     window.dispatchEvent(new CustomEvent('storage-updated', { detail: { type: 'whatsapp_agent', agentId } }));
+    setTelephonyAgentInSupabase(agentId).catch(() => {});
   }
 
   // Phone Numbers
@@ -260,6 +310,7 @@ class StorageService {
     all.unshift(log);
     localStorage.setItem(STORAGE_KEYS.CALL_LOGS, JSON.stringify(all));
     window.dispatchEvent(new CustomEvent('storage-updated', { detail: { type: 'call_logs' } }));
+    saveCallLogToSupabase(log).catch(() => {});
     return log;
   }
 

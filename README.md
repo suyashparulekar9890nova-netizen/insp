@@ -123,15 +123,26 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configure Environment Variables
-Copy `.env.example` to `.env` and insert your Groq API key:
+Copy `.env.example` to `.env` and insert your credentials:
 ```bash
 cp .env.example .env
 ```
 Edit `.env`:
 ```env
+# Groq Cloud API
 VITE_GROQ_API_KEY=gsk_your_actual_groq_api_key_here
 GROQ_API_KEY=gsk_your_actual_groq_api_key_here
+
+# Supabase Cloud Database
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 ```
+
+### 4. Initialize Database Schema in Supabase
+Open your [Supabase Dashboard](https://supabase.com/dashboard) -> **SQL Editor**, paste the contents of [`supabase_schema.sql`](./supabase_schema.sql), and click **Run**.
+This automatically creates the `workspaces`, `agents`, `call_logs`, and `telephony_settings` tables with full Row Level Security and seed agents.
 
 ---
 
