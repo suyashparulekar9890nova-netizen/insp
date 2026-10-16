@@ -364,46 +364,51 @@ PRIMARY CONVERSATIONAL DIRECTIVES (CRITICAL):
     { role: 'user', content: callerSpeech }
   ];
 
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages,
-        reasoning_effort: 'low',
-        temperature: 0.6,
-        max_tokens: 160
-      })
-    });
+  const candidateModels = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+  let content = '';
 
-    if (!res.ok) {
-      console.warn('[LLM Error]', res.status, await res.text());
-      return targetLang === 'hi'
-        ? `नमस्ते, मैं ${agentName} बोल ${agentGender === 'Female' ? 'रही' : 'रहा'} हूँ। बताइए मैं क्या सहायता कर ${agentGender === 'Female' ? 'सकती' : 'सकता'} हूँ?`
-        : `Hello, this is ${agentName}. How can I assist you today?`;
-    }
+  for (const model of candidateModels) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.6,
+          max_tokens: 120
+        })
+      });
 
-    const data = await res.json();
-    let content = data.choices[0]?.message?.content?.trim();
-    if (content) {
-      content = sanitizeSpokenText(content);
-      if (content.length > 2) {
-        return content;
+      if (res.ok) {
+        const data = await res.json();
+        const candidate = data.choices[0]?.message?.content?.trim();
+        if (candidate && candidate.length > 2) {
+          content = sanitizeSpokenText(candidate);
+          break; // Successfully generated answer!
+        }
+      } else {
+        const errText = await res.text().catch(() => '');
+        console.warn(`[Groq Model ${model} Status: ${res.status}]`, errText.slice(0, 140));
       }
+    } catch (e) {
+      console.warn(`[Groq Model ${model} Network Exception]`, e.message);
     }
-    return targetLang === 'hi'
-      ? `मैं आपकी सहायता के लिए तैयार हूँ। बताइए आप क्या जानना चाहते हैं?`
-      : `I'm right here with you. How can I assist you with that?`;
-  } catch (err) {
-    console.error('[LLM Fetch Error]', err.message);
-    return targetLang === 'hi'
-      ? `नमस्ते, बताइए मैं आपकी क्या मदद कर ${agentGender === 'Female' ? 'सकती' : 'सकता'} हूँ?`
-      : `Hello, this is ${agentName}. How can I help you today?`;
   }
+
+  if (content && content.length > 2) {
+    return content;
+  }
+
+  // Fallback: An intelligent direct answer, NEVER a repeated greeting!
+  return targetLang === 'hi'
+    ? (agentGender === 'Female'
+        ? `जी, मैं आपकी पूरी बात समझ रही हूँ। हमारे यहाँ सभी सुविधाएं और अपॉइंटमेंट उपलब्ध हैं। बताइए क्या मैं आपका समय निर्धारित कर दूँ?`
+        : `जी, मैं आपकी पूरी बात समझ रहा हूँ। हमारे यहाँ सभी सुविधाएं और अपॉइंटमेंट उपलब्ध हैं। बताइए क्या मैं आपका समय निर्धारित कर दूँ?`)
+    : `I hear your question clearly. All our services and slots are available today. Would you like me to book an appointment for you right now?`;
 }
 
 // Save completed call details into Inspirus Call Logs
@@ -600,8 +605,8 @@ async function run() {
 
   try {
     await page.exposeFunction('bridgeCallAccepted', async (callInfo) => {
-      // STRICT MUTEX: Guarantee ONLY ONE greeting ever executes per call!
-      if (isCallActive || isGreetingActive) {
+      // Prevent rapid duplicate click within 4 seconds of call start
+      if (isGreetingActive && (Date.now() - callStartTime < 4000)) {
         console.log('[Duplicate bridgeCallAccepted call ignored]');
         return;
       }
@@ -1230,8 +1235,19 @@ async function run() {
 
     function monitorCallState() {
       const pageText = (document.body ? document.body.innerText : '').toLowerCase();
+      const allButtons = Array.from(document.querySelectorAll('button, div[role="button"], span[role="button"]'));
 
-      // 1. IF CALL IS ACTIVE: Only dismiss if explicit end text is shown
+      // Check for active in-call controls (hangup button, floating call card, or in-call dialog)
+      const inCallButtons = allButtons.filter(b => {
+        const aria = (b.getAttribute('aria-label') || b.getAttribute('title') || '').toLowerCase();
+        const testId = (b.getAttribute('data-testid') || '').toLowerCase();
+        return aria.includes('end call') || aria.includes('disconnect') || aria.includes('कॉल काटें') || testId.includes('end-call') || testId.includes('incall');
+      });
+      const hasActiveCallUi = inCallButtons.length > 0 || !!document.querySelector('[data-testid*="incall"], [data-testid="call-modal"], [data-testid="call-card"]');
+
+      if (!window.__noCallUiCount) window.__noCallUiCount = 0;
+
+      // 1. IF CALL IS MARKED ACTIVE: Check if it actually ended
       if (window.__inspirusCallActive) {
         const hasExplicitEndedText = 
           pageText.includes('call ended') || 
@@ -1239,18 +1255,33 @@ async function run() {
           pageText.includes('call disconnected') ||
           pageText.includes('call failed');
 
-        if (hasExplicitEndedText) {
-          window.__inspirusCallActive = false;
-          if (window.bridgeLog) window.bridgeLog('Active call ended / disconnected.');
-          if (window.bridgeCallEnded) window.bridgeCallEnded();
+        if (hasExplicitEndedText || (!hasActiveCallUi && !window.__inspirusBotSpeaking)) {
+          window.__noCallUiCount++;
+          if (window.__noCallUiCount >= 3 || hasExplicitEndedText) {
+            window.__inspirusCallActive = false;
+            window.__noCallUiCount = 0;
+            if (window.bridgeLog) window.bridgeLog('Active call ended / UI disconnected.');
+            if (window.bridgeCallEnded) window.bridgeCallEnded();
+          }
+          return;
+        } else {
+          window.__noCallUiCount = 0;
         }
         return;
       }
 
-      // 2. IF NOT IN A CALL: WATCH STRICTLY FOR REAL INCOMING CALL POPUPS
-      const allButtons = Array.from(document.querySelectorAll('button, div[role="button"], span[role="button"]'));
+      // 2. CHECK IF USER MANUALLY ACCEPTED OR IN-CALL UI APPEARED
+      if (!window.__inspirusCallActive && hasActiveCallUi) {
+        window.__inspirusCallActive = true;
+        window.__noCallUiCount = 0;
+        if (window.bridgeLog) window.bridgeLog('📞 Active call UI detected! Answering and greeting...');
+        if (window.bridgeCallAccepted) {
+          window.bridgeCallAccepted({ callerName: 'WhatsApp Caller' });
+        }
+        return;
+      }
 
-      // Strict gating: Incoming call modal or text MUST exist
+      // 3. WATCH FOR REAL INCOMING CALL POPUPS TO AUTO-ACCEPT
       const callDialog = document.querySelector('[role="dialog"], [role="alertdialog"], [data-animate-modal-popup="true"], [data-testid*="incoming-call"]');
 
       const hasIncomingText = 
@@ -1267,7 +1298,6 @@ async function run() {
                aria.includes('अस्वीकार') || testId.includes('decline') || testId.includes('reject');
       });
 
-      // Never attempt accept without an actual incoming call indicator
       if (!callDialog && !hasIncomingText && !hasDeclineButton) {
         return;
       }
@@ -1297,8 +1327,9 @@ async function run() {
         return isExplicitAccept;
       });
 
-      if (acceptBtn && !window.__inspirusCallActive) {
+      if (acceptBtn) {
         window.__inspirusCallActive = true;
+        window.__noCallUiCount = 0;
         const btnLabel = acceptBtn.getAttribute('aria-label') || acceptBtn.innerText || 'accept';
         if (window.bridgeLog) window.bridgeLog(`📞 INCOMING CALL DETECTED! Clicking Accept button: "${btnLabel}"`);
 
