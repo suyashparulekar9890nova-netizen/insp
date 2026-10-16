@@ -140,8 +140,8 @@ export class AgentStudioView {
           <div class="form-group" style="margin-bottom: 0.6rem;">
             <label class="form-label">Persona Voice Gender</label>
             <select class="form-select" id="field-agent-gender">
-              <option value="Male" ${(agent.gender || VoicePipeline.getAgentGender(agent)) === 'male' ? 'selected' : ''}>👨 Male (Strict Baritone / Deep)</option>
-              <option value="Female" ${(agent.gender || VoicePipeline.getAgentGender(agent)) === 'female' ? 'selected' : ''}>👩 Female (Strict Melodic / Clear)</option>
+              <option value="Male" ${(agent.gender || VoicePipeline.getAgentGender(agent) || '').toLowerCase() === 'male' ? 'selected' : ''}>👨 Male (Strict Baritone / Deep)</option>
+              <option value="Female" ${(agent.gender || VoicePipeline.getAgentGender(agent) || '').toLowerCase() === 'female' ? 'selected' : ''}>👩 Female (Strict Melodic / Clear)</option>
             </select>
           </div>
 
@@ -458,11 +458,46 @@ export class AgentStudioView {
       });
     }
 
+    // Dynamic Language / Voice Auto-Sync
+    const langSelect = container.querySelector('#field-agent-lang');
+    const voiceSelect = container.querySelector('#field-agent-voice');
+    const genderSelect = container.querySelector('#field-agent-gender');
+    const greetingTextarea = container.querySelector('#field-agent-greeting');
+
+    if (langSelect && voiceSelect) {
+      langSelect.addEventListener('change', () => {
+        const isHi = langSelect.value.startsWith('hi');
+        const isM = (genderSelect?.value || 'Female').toLowerCase().startsWith('m');
+        if (isHi) {
+          const targetVoice = isM ? 'Madhur (Authentic Hindi Male)' : 'Swara (Authentic Hindi Female)';
+          const matchOpt = Array.from(voiceSelect.options).find(o => o.value.includes(isM ? 'Madhur' : 'Swara'));
+          if (matchOpt) voiceSelect.value = matchOpt.value;
+
+          const currentG = greetingTextarea?.value || '';
+          if (!currentG || currentG.startsWith('Hello') || !/[\u0900-\u097F]/.test(currentG)) {
+            const firstName = container.querySelector('#field-agent-name')?.value?.split('—')[0]?.trim() || 'Maya';
+            greetingTextarea.value = `नमस्ते! कॉल करने के लिए धन्यवाद। मेरा नाम ${firstName} है। बताइए मैं आपकी क्या सहायता कर सकती हूँ?`;
+          }
+          Toast.info('Switched agent voice to authentic Hindi Neural');
+        }
+      });
+    }
+
     // Test Agent Call
     const testAgentBtn = container.querySelector('#btn-studio-test-agent');
     if (testAgentBtn) {
       testAgentBtn.addEventListener('click', () => {
-        this.onTestAgent(agent);
+        const currentLang = container.querySelector('#field-agent-lang')?.value || agent.language || 'en-US';
+        const currentGreeting = container.querySelector('#field-agent-greeting')?.value || agent.greeting;
+        const currentVoice = container.querySelector('#field-agent-voice')?.value || agent.voiceName;
+        const currentGender = container.querySelector('#field-agent-gender')?.value || agent.gender;
+        this.onTestAgent({
+          ...agent,
+          language: currentLang,
+          greeting: currentGreeting,
+          voiceName: currentVoice,
+          gender: currentGender
+        });
       });
     }
   }

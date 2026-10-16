@@ -116,7 +116,7 @@ class App {
         onOpenArchitect: (prompt) => this.architectModal.open(prompt)
       }),
       studio: new AgentStudioView({
-        onTestAgent: (agent) => this.openCallSimulator(agent),
+        onTestAgent: (agent) => this.openCallSimulator(agent, { language: agent.language, initialGreeting: agent.greeting }),
         onOpenArchitect: () => this.architectModal.open()
       }),
       telephony: new TelephonyView({

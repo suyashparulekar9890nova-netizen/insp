@@ -76,16 +76,16 @@ export const initialAgents = [
     gender: "Female",
     badge: "Healthcare Grade",
     status: "Active",
-    voiceProvider: "ElevenLabs Turbo v2.5",
-    voiceName: "Rachel (Empathetic & Calm)",
-    voiceId: "21m00Tcm4TlvDq8ikWAM",
-    language: "en-US",
-    supportedLanguages: ["en-US", "es-ES", "es-MX"],
+    voiceProvider: "Microsoft Neural",
+    voiceName: "Swara (Authentic Hindi Female)",
+    voiceId: "hi-IN-SwaraNeural",
+    language: "hi-IN",
+    supportedLanguages: ["hi-IN", "en-US", "en-IN"],
     autoLanguageDetect: true,
     speakingRate: 1.0,
     pitch: 0.0,
     stability: 0.75,
-    greeting: "Hello! Thank you for calling DentalCare Plus. My name is Maya, your AI care coordinator. Are you calling to book a new appointment, reschedule, or do you have a dental emergency?",
+    greeting: "नमस्ते! डेंटलकेयर प्लस क्लिनिक में आपका स्वागत है। मेरा नाम Maya है। बताइए, मैं आपकी क्या सहायता कर सकती हूँ?",
     systemPrompt: `You are Maya, an empathetic, highly professional Patient Care Coordinator at DentalCare Plus Clinics.
 Your goals:
 1. Greet callers warmly and determine whether they have an urgent dental emergency (severe pain, bleeding, broken tooth) or routine needs.
@@ -626,7 +626,9 @@ export const voiceModelsCatalog = [
   { provider: "OpenAI Realtime", name: "Alloy (Neutral & Balanced)", id: "openai-alloy", gender: "Neutral", accent: "American", latency: "160ms", quality: "Conversational" },
   { provider: "OpenAI Realtime", name: "Echo (Polished & Executive)", id: "openai-echo", gender: "Male", accent: "American", latency: "160ms", quality: "Conversational" },
   { provider: "OpenAI Realtime", name: "Nova (Energetic & Friendly)", id: "openai-nova", gender: "Female", accent: "American", latency: "160ms", quality: "Conversational" },
-  { provider: "Cartesia Sonic", name: "Sonic-Mateo (Spanish Bilingual)", id: "sonic-es-mateo-01", gender: "Male", accent: "Latin Spanish", latency: "110ms", quality: "Bilingual" },
+  { provider: "Microsoft Neural", name: "Swara (Authentic Hindi Female)", id: "hi-IN-SwaraNeural", gender: "Female", accent: "Hindi (India)", latency: "85ms", quality: "Studio Neural" },
+  { provider: "Microsoft Neural", name: "Madhur (Authentic Hindi Male)", id: "hi-IN-MadhurNeural", gender: "Male", accent: "Hindi (India)", latency: "85ms", quality: "Studio Neural" },
   { provider: "Cartesia Sonic", name: "Sonic-Pravin (Hindi & Indian English)", id: "sonic-hi-pravin", gender: "Male", accent: "Indian English", latency: "115ms", quality: "Multilingual" },
   { provider: "Cartesia Sonic", name: "Sonic-Amelie (French European)", id: "sonic-fr-amelie", gender: "Female", accent: "French", latency: "110ms", quality: "Multilingual" }
 ];
+

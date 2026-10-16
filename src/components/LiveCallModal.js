@@ -23,8 +23,13 @@ export class LiveCallModal {
   open(agent = null, customOptions = {}) {
     const agents = storage.getAgents();
     this.agent = agent || agents[0];
-    this.selectedLanguage = customOptions.language || this.agent?.language || 'en-US';
-    this.initialCustomGreeting = customOptions.initialGreeting || null;
+    const isHindiAgent = (this.agent?.language && this.agent.language.startsWith('hi')) || 
+      /swara|madhur|hindi/i.test(this.agent?.voiceName || '') || 
+      /[\u0900-\u097F]/.test(this.agent?.greeting || '');
+    this.selectedLanguage = customOptions.language || (isHindiAgent ? 'hi-IN' : (this.agent?.language || 'en-US'));
+    this.initialCustomGreeting = customOptions.initialGreeting || (isHindiAgent && (!this.agent?.greeting || this.agent.greeting.startsWith('Hello') || !/[\u0900-\u097F]/.test(this.agent.greeting))
+      ? `नमस्ते! डेंटलकेयर प्लस क्लिनिक में आपका स्वागत है। मेरा नाम ${this.agent?.name?.split('—')[0]?.trim() || 'Maya'} है। क्या आप नया अपॉइंटमेंट बुक करना चाहते हैं या कोई सहायता चाहिए?`
+      : (this.agent?.greeting || null));
 
     if (!this.container) {
       this.container = document.createElement('div');

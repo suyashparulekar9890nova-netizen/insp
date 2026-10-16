@@ -605,16 +605,15 @@ async function run() {
 
   try {
     await page.exposeFunction('bridgeCallAccepted', async (callInfo) => {
-      // Prevent rapid duplicate click within 4 seconds of call start
-      if (isGreetingActive && (Date.now() - callStartTime < 4000)) {
-        console.log('[Duplicate bridgeCallAccepted call ignored]');
+      // STRICT SINGLE-GREETING GUARD: If call is already active, NEVER restart or repeat greeting
+      if (isCallActive) {
+        console.log('[bridgeCallAccepted ignored: Call already active, keeping conversation in progress]');
         return;
       }
       isCallActive = true;
       isGreetingActive = true;
       isBotSpeaking = true;
       callStartTime = Date.now();
-      activeCallLanguage = 'en';
       conversationHistory = [];
       recentBotResponses = [];
       speechAccumulator = '';
@@ -629,29 +628,42 @@ async function run() {
       currentActiveAgent = state?.agent || {
         name: 'Maya',
         gender: 'Female',
-        greeting: 'Hello! Thank you for calling. My name is Maya, your AI care coordinator. How can I assist you right now?',
+        language: 'hi-IN',
+        greeting: 'नमस्ते! कॉल करने के लिए धन्यवाद। मेरा नाम Maya है। बताइए, मैं आपकी क्या सहायता कर सकती हूँ?',
         systemPrompt: 'You are an intelligent voice AI assistant.'
       };
       currentLlmConfig = state?.llmConfig || null;
 
+      const isHindiAgent = (currentActiveAgent.language && currentActiveAgent.language.startsWith('hi')) || /[\u0900-\u097F]/.test(currentActiveAgent.greeting || '');
+      activeCallLanguage = isHindiAgent ? 'hi' : 'en';
+
       const agentGender = getAgentGender(currentActiveAgent);
+      const agentFirstName = currentActiveAgent.name?.split('—')[0]?.trim() || 'Agent';
+
+      let greetingText = currentActiveAgent.greeting;
+      if (isHindiAgent && (!greetingText || greetingText.startsWith('Hello') || !/[\u0900-\u097F]/.test(greetingText))) {
+        greetingText = (agentGender === 'Female')
+          ? `नमस्ते! कॉल करने के लिए धन्यवाद। मेरा नाम ${agentFirstName} है। बताइए, मैं आपकी क्या सहायता कर सकती हूँ?`
+          : `नमस्ते! कॉल करने के लिए धन्यवाद। मेरा नाम ${agentFirstName} है। बताइए, मैं आपकी क्या सहायता कर सकता हूँ?`;
+      } else if (!greetingText) {
+        greetingText = `Hello! Thank you for calling. My name is ${agentFirstName}. How can I assist you right now?`;
+      }
 
       console.log('\n==============================================================');
       console.log(`🟢 [INCOMING WHATSAPP CALL ANSWERED IN REAL TIME!]`);
       console.log(` 👤 Caller: ${callInfo.callerName || 'WhatsApp Contact'}`);
       console.log(` ⏰ Time: ${new Date().toLocaleTimeString()}`);
       console.log(` 🤖 Active Agent: ${currentActiveAgent.name} (${agentGender})`);
-      console.log(` 🎭 Persona: ${currentActiveAgent.role || currentActiveAgent.name}`);
-      console.log(` 🎙️ Greeting: "${currentActiveAgent.greeting}"`);
+      console.log(` 🌐 Language: ${isHindiAgent ? 'Hindi (hi-IN)' : 'English (en-US)'}`);
+      console.log(` 🎙️ Greeting: "${greetingText}"`);
       console.log('==============================================================\n');
 
-      const greetingText = currentActiveAgent.greeting || `Hello! Thank you for calling. My name is ${currentActiveAgent.name}. How can I assist you right now?`;
       recentBotResponses.push(greetingText);
-      const voice = selectVoice(currentActiveAgent, greetingText, 'en');
-      console.log(`🗣️ Speaking greeting via Edge TTS (${voice}) [Gender: ${agentGender}]...`);
+      const voice = selectVoice(currentActiveAgent, greetingText, activeCallLanguage);
+      console.log(`🗣️ Speaking initial greeting via Edge TTS (${voice}) [Gender: ${agentGender}]...`);
 
       const wordCount = greetingText.split(/\s+/).length;
-      const initialEstimate = Math.max(3.5, (wordCount * 0.45) + 1.2);
+      const initialEstimate = Math.max(3.0, (wordCount * 0.45) + 1.0);
       await notifyAiSpeaking(initialEstimate);
 
       // Auto-unlock watchdog in case audio onended event is delayed
@@ -663,7 +675,7 @@ async function run() {
           isAiResponding = false;
           notifyAiSpeaking(0).catch(() => {});
         }
-      }, (initialEstimate + 1.8) * 1000);
+      }, (initialEstimate + 1.2) * 1000);
 
       const audioDataUri = await fetchTtsBase64(greetingText, voice);
       if (audioDataUri) {
@@ -1255,9 +1267,10 @@ async function run() {
           pageText.includes('call disconnected') ||
           pageText.includes('call failed');
 
+        // Require at least 24 consecutive absence ticks (6.0 full seconds) or explicit ended text to prevent false dropouts
         if (hasExplicitEndedText || (!hasActiveCallUi && !window.__inspirusBotSpeaking)) {
           window.__noCallUiCount++;
-          if (window.__noCallUiCount >= 3 || hasExplicitEndedText) {
+          if (window.__noCallUiCount >= 24 || hasExplicitEndedText) {
             window.__inspirusCallActive = false;
             window.__noCallUiCount = 0;
             if (window.bridgeLog) window.bridgeLog('Active call ended / UI disconnected.');
