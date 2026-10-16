@@ -54,11 +54,6 @@ export class Header {
         </div>
 
         <div class="header-right-actions">
-          <div class="telephony-health-chip" title="Live SIP Carrier & Trunk Connection Status">
-            <span class="telephony-pulse"></span>
-            <span>SIP Connected: Twilio US-East (99.98%)</span>
-          </div>
-
           <!-- Prompt-to-Agent Generator Button -->
           <button class="btn-secondary" id="btn-header-open-architect" style="background: rgba(99, 102, 241, 0.15); border-color: rgba(99, 102, 241, 0.4); color: #fff;">
             <span>✨</span>
@@ -69,12 +64,6 @@ export class Header {
           <button class="btn-secondary" id="btn-header-open-apikey" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.35); color: #fff;" title="Configure Gemini / OpenAI API key for spontaneous live responses">
             <span>🔑</span>
             <span>API Key</span>
-          </button>
-
-          <!-- Host & Embed Button -->
-          <button class="btn-secondary" id="btn-header-open-embed" title="Get embeddable widget snippet to host on external websites">
-            <span>🌐</span>
-            <span>Host & Embed</span>
           </button>
 
           <!-- Live Simulator Button -->
@@ -152,9 +141,11 @@ export class Header {
     });
 
     const openEmbedBtn = container.querySelector('#btn-header-open-embed');
-    openEmbedBtn.addEventListener('click', () => {
-      this.onOpenEmbedModal();
-    });
+    if (openEmbedBtn) {
+      openEmbedBtn.addEventListener('click', () => {
+        this.onOpenEmbedModal();
+      });
+    }
 
     const openApiKeyBtn = container.querySelector('#btn-header-open-apikey');
     if (openApiKeyBtn) {
