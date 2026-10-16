@@ -1,0 +1,5 @@
+# Inspirus Voice AI - Python Telephony & Audio Engine Dependencies
+edge-tts>=6.1.10
+pyaudiowpatch>=0.2.12.5
+numpy>=1.24.0
+requests>=2.31.0
